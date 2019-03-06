@@ -1,1 +1,1 @@
-# opencensus-graphite
+# OpenCensus Graphite

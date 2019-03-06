@@ -1,0 +1,5 @@
+rootProject.name = "opencensus"
+
+include ":opencensus-graphite"
+
+project(':opencensus-graphite').projectDir = "$rootDir/graphite" as File
