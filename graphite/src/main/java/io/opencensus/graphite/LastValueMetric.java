@@ -66,17 +66,17 @@ public final class LastValueMetric {
    * @param timestamp the timestamp when the value was captured.
    * @param value the captured value.
    */
-  public void recordWithMapLabels(
-      Map<LabelKey, LabelValue> labels, Timestamp timestamp, double value) {
+  public void recordWithMapLabels(Map<String, String> labels, Timestamp timestamp, double value) {
     checkNotNull(labels, "labels");
     ImmutableList.Builder<LabelValue> builder =
         ImmutableList.builderWithExpectedSize(labelKeys.size());
     for (LabelKey labelKey : labelKeys) {
-      LabelValue labelValue = labels.get(labelKey);
-      if (labelValue == null) {
-        labelValue = UNSET_VALUE;
+      String labelValueStr = labels.get(labelKey.getKey());
+      if (labelValueStr == null) {
+        builder.add(UNSET_VALUE);
+        continue;
       }
-      builder.add(labelValue);
+      builder.add(LabelValue.create(labelValueStr));
     }
     record(builder.build(), timestamp, value);
   }

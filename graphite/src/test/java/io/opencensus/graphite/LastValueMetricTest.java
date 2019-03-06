@@ -45,8 +45,7 @@ public class LastValueMetricTest {
   private static final String METRIC_DESCRIPTION = "description";
   private static final String METRIC_UNIT = "1";
   private static final LabelKey LABEL_KEY = LabelKey.create("key", "key description");
-  private static final ImmutableList<LabelKey> LABEL_KEYS =
-      ImmutableList.of(LabelKey.create("key", "key description"));
+  private static final ImmutableList<LabelKey> LABEL_KEYS = ImmutableList.of(LABEL_KEY);
   private static final ImmutableList<LabelValue> LABEL_VALUES =
       ImmutableList.of(LabelValue.create("value"));
   private static final ImmutableList<LabelValue> LABEL_VALUES1 =
@@ -189,8 +188,7 @@ public class LastValueMetricTest {
   @Test
   public void record_WithMap() {
     assertThat(gaugeMetric.getMetric()).isNull();
-    gaugeMetric.recordWithMapLabels(
-        Collections.singletonMap(LABEL_KEY, LabelValue.create("value")), TEST_TIME, 5);
+    gaugeMetric.recordWithMapLabels(Collections.singletonMap("key", "value"), TEST_TIME, 5);
     assertThat(gaugeMetric.getMetric()).isNotNull();
     assertThat(gaugeMetric.getMetric().getMetricDescriptor()).isEqualTo(GAUGE_METRIC_DESCRIPTOR);
     assertThat(gaugeMetric.getMetric().getTimeSeriesList())
@@ -200,10 +198,7 @@ public class LastValueMetricTest {
                 ImmutableList.of(Point.create(Value.doubleValue(5), TEST_TIME)),
                 null));
     // Record a random key will cause to use UNSET_VALUE for the key.
-    gaugeMetric.recordWithMapLabels(
-        Collections.singletonMap(LabelKey.create("fake_key", ""), LabelValue.create("value")),
-        TEST_TIME1,
-        5);
+    gaugeMetric.recordWithMapLabels(Collections.singletonMap("fake_key", "value"), TEST_TIME1, 5);
     assertThat(gaugeMetric.getMetric().getTimeSeriesList())
         .containsExactly(
             TimeSeries.create(
