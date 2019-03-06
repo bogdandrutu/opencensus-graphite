@@ -48,12 +48,37 @@ public final class LastValueMetric {
   private final MetricDescriptor metricDescriptor;
   private volatile ImmutableMap<ImmutableList<LabelValue>, MutablePoint> registeredPoints =
       ImmutableMap.of();
-  private final int labelKeysSize;
+  private final ImmutableList<LabelKey> labelKeys;
 
   LastValueMetric(
       String name, String description, String unit, Type type, List<LabelKey> labelKeys) {
-    labelKeysSize = labelKeys.size();
+    // Not using copyOf because that may cause a full copy.
+    this.labelKeys = ImmutableList.<LabelKey>builder().addAll(labelKeys).build();
     this.metricDescriptor = MetricDescriptor.create(name, description, unit, type, labelKeys);
+  }
+
+  /**
+   * Records a new value for one TimeSeries in this Metric. This is a more convenient way to record
+   * because of the labels map, but comes with a cost of creating the list of labels inside this
+   * method.
+   *
+   * @param labels the map of labels.
+   * @param timestamp the timestamp when the value was captured.
+   * @param value the captured value.
+   */
+  public void recordWithMapLabels(
+      Map<LabelKey, LabelValue> labels, Timestamp timestamp, double value) {
+    checkNotNull(labels, "labels");
+    ImmutableList.Builder<LabelValue> builder =
+        ImmutableList.builderWithExpectedSize(labelKeys.size());
+    for (LabelKey labelKey : labelKeys) {
+      LabelValue labelValue = labels.get(labelKey);
+      if (labelValue == null) {
+        labelValue = UNSET_VALUE;
+      }
+      builder.add(labelValue);
+    }
+    record(builder.build(), timestamp, value);
   }
 
   /**
@@ -79,7 +104,8 @@ public final class LastValueMetric {
 
     // Slow path we need to add a new Point.
     checkArgument(
-        labelKeysSize == labelValues.size(), "Label Keys and Label Values don't have same size.");
+        labelKeys.size() == labelValues.size(),
+        "Label Keys and Label Values don't have same size.");
     addMutablePoint(
         labelValues,
         new MutablePoint(

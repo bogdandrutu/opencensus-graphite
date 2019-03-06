@@ -17,6 +17,7 @@
 package io.opencensus.graphite;
 
 import static com.google.common.truth.Truth.assertThat;
+import static io.opencensus.graphite.LastValueMetric.UNSET_VALUE;
 
 import com.google.common.collect.ImmutableList;
 import io.opencensus.common.Duration;
@@ -28,6 +29,7 @@ import io.opencensus.metrics.export.MetricDescriptor.Type;
 import io.opencensus.metrics.export.Point;
 import io.opencensus.metrics.export.TimeSeries;
 import io.opencensus.metrics.export.Value;
+import java.util.Collections;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -42,7 +44,8 @@ public class LastValueMetricTest {
   private static final String METRIC_NAME = "name";
   private static final String METRIC_DESCRIPTION = "description";
   private static final String METRIC_UNIT = "1";
-  private static final ImmutableList<LabelKey> LABEL_KEY =
+  private static final LabelKey LABEL_KEY = LabelKey.create("key", "key description");
+  private static final ImmutableList<LabelKey> LABEL_KEYS =
       ImmutableList.of(LabelKey.create("key", "key description"));
   private static final ImmutableList<LabelValue> LABEL_VALUES =
       ImmutableList.of(LabelValue.create("value"));
@@ -55,16 +58,16 @@ public class LastValueMetricTest {
   private static final Timestamp TEST_TIME3 = TEST_TIME2.addDuration(Duration.create(1, 1));
   private static final MetricDescriptor GAUGE_METRIC_DESCRIPTOR =
       MetricDescriptor.create(
-          METRIC_NAME, METRIC_DESCRIPTION, METRIC_UNIT, Type.GAUGE_DOUBLE, LABEL_KEY);
+          METRIC_NAME, METRIC_DESCRIPTION, METRIC_UNIT, Type.GAUGE_DOUBLE, LABEL_KEYS);
   private static final MetricDescriptor CUMULATIVE_METRIC_DESCRIPTOR =
       MetricDescriptor.create(
-          METRIC_NAME, METRIC_DESCRIPTION, METRIC_UNIT, Type.CUMULATIVE_DOUBLE, LABEL_KEY);
+          METRIC_NAME, METRIC_DESCRIPTION, METRIC_UNIT, Type.CUMULATIVE_DOUBLE, LABEL_KEYS);
   private final LastValueMetric gaugeMetric =
       new LastValueMetric(
-          METRIC_NAME, METRIC_DESCRIPTION, METRIC_UNIT, Type.GAUGE_DOUBLE, LABEL_KEY);
+          METRIC_NAME, METRIC_DESCRIPTION, METRIC_UNIT, Type.GAUGE_DOUBLE, LABEL_KEYS);
   private final LastValueMetric cumulativeMetric =
       new LastValueMetric(
-          METRIC_NAME, METRIC_DESCRIPTION, METRIC_UNIT, Type.CUMULATIVE_DOUBLE, LABEL_KEY);
+          METRIC_NAME, METRIC_DESCRIPTION, METRIC_UNIT, Type.CUMULATIVE_DOUBLE, LABEL_KEYS);
 
   @Test
   public void record_WithNullLabelValues() {
@@ -78,6 +81,13 @@ public class LastValueMetricTest {
     thrown.expect(NullPointerException.class);
     thrown.expectMessage("timestamp");
     gaugeMetric.record(LABEL_VALUES, null, 5);
+  }
+
+  @Test
+  public void record_WithNullMapLabelValues() {
+    thrown.expect(NullPointerException.class);
+    thrown.expectMessage("labels");
+    gaugeMetric.recordWithMapLabels(null, TEST_TIME, 5);
   }
 
   @Test
@@ -174,5 +184,47 @@ public class LastValueMetricTest {
                 LABEL_VALUES,
                 ImmutableList.of(Point.create(Value.doubleValue(4), TEST_TIME3)),
                 TEST_TIME2));
+  }
+
+  @Test
+  public void record_WithMap() {
+    assertThat(gaugeMetric.getMetric()).isNull();
+    gaugeMetric.recordWithMapLabels(
+        Collections.singletonMap(LABEL_KEY, LabelValue.create("value")), TEST_TIME, 5);
+    assertThat(gaugeMetric.getMetric()).isNotNull();
+    assertThat(gaugeMetric.getMetric().getMetricDescriptor()).isEqualTo(GAUGE_METRIC_DESCRIPTOR);
+    assertThat(gaugeMetric.getMetric().getTimeSeriesList())
+        .containsExactly(
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(5), TEST_TIME)),
+                null));
+    // Record a random key will cause to use UNSET_VALUE for the key.
+    gaugeMetric.recordWithMapLabels(
+        Collections.singletonMap(LabelKey.create("fake_key", ""), LabelValue.create("value")),
+        TEST_TIME1,
+        5);
+    assertThat(gaugeMetric.getMetric().getTimeSeriesList())
+        .containsExactly(
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(5), TEST_TIME)),
+                null),
+            TimeSeries.create(
+                ImmutableList.of(UNSET_VALUE),
+                ImmutableList.of(Point.create(Value.doubleValue(5), TEST_TIME1)),
+                null));
+    // Empty map uses UNSET_VALUE for the key.
+    gaugeMetric.recordWithMapLabels(Collections.emptyMap(), TEST_TIME2, 7);
+    assertThat(gaugeMetric.getMetric().getTimeSeriesList())
+        .containsExactly(
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(5), TEST_TIME)),
+                null),
+            TimeSeries.create(
+                ImmutableList.of(UNSET_VALUE),
+                ImmutableList.of(Point.create(Value.doubleValue(7), TEST_TIME2)),
+                null));
   }
 }
