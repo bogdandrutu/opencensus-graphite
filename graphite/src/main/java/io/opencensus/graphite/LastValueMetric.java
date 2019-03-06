@@ -46,15 +46,19 @@ public final class LastValueMetric {
   public static final LabelValue UNSET_VALUE = LabelValue.create(null);
 
   private final MetricDescriptor metricDescriptor;
-  private volatile ImmutableMap<ImmutableList<LabelValue>, MutablePoint> registeredPoints =
+  private volatile ImmutableMap<ImmutableList<LabelValue>, MutableTimeSeries> registeredPoints =
       ImmutableMap.of();
   private final ImmutableList<LabelKey> labelKeys;
+  private final boolean isCumulative;
+  private final boolean isDouble;
 
   LastValueMetric(
       String name, String description, String unit, Type type, List<LabelKey> labelKeys) {
     // Not using copyOf because that may cause a full copy.
     this.labelKeys = ImmutableList.<LabelKey>builder().addAll(labelKeys).build();
     this.metricDescriptor = MetricDescriptor.create(name, description, unit, type, labelKeys);
+    this.isCumulative = type == Type.CUMULATIVE_DOUBLE || type == Type.CUMULATIVE_INT64;
+    this.isDouble = type == Type.CUMULATIVE_DOUBLE || type == Type.GAUGE_DOUBLE;
   }
 
   /**
@@ -95,10 +99,10 @@ public final class LastValueMetric {
     checkNotNull(timestamp, "timestamp");
     // Safe to access the map without a lock because the map is immutable and volatile (so the
     // last written value is visible).
-    MutablePoint mutablePoint = registeredPoints.get(labelValues);
-    if (mutablePoint != null) {
+    MutableTimeSeries mutableTimeSeries = registeredPoints.get(labelValues);
+    if (mutableTimeSeries != null) {
       // Fast path we already have the point
-      mutablePoint.set(timestamp, value);
+      mutableTimeSeries.set(timestamp, value);
       return;
     }
 
@@ -108,18 +112,19 @@ public final class LastValueMetric {
         "Label Keys and Label Values don't have same size.");
     addMutablePoint(
         labelValues,
-        new MutablePoint(
-            labelValues, timestamp, value, metricDescriptor.getType() == Type.CUMULATIVE_DOUBLE));
+        isDouble
+            ? new MutableDoubleTimeSeries(labelValues, timestamp, value, isCumulative)
+            : new MutableLongTimeSeries(labelValues, timestamp, value, isCumulative));
   }
 
   // Synchronized here to make sure that two threads do not add a Point in the same time.
   private synchronized void addMutablePoint(
-      ImmutableList<LabelValue> labelValues, MutablePoint mutablePoint) {
+      ImmutableList<LabelValue> labelValues, MutableTimeSeries mutableTimeSeries) {
     // Synchronized here to make sure that two threads do not add a Point in the same time.
     registeredPoints =
-        ImmutableMap.<ImmutableList<LabelValue>, MutablePoint>builder()
+        ImmutableMap.<ImmutableList<LabelValue>, MutableTimeSeries>builder()
             .putAll(registeredPoints)
-            .put(labelValues, mutablePoint)
+            .put(labelValues, mutableTimeSeries)
             .build();
   }
 
@@ -127,14 +132,14 @@ public final class LastValueMetric {
   Metric getMetric() {
     // Safe to access the map without a lock because the map is immutable and volatile (so the
     // last written value is visible).
-    ImmutableMap<ImmutableList<LabelValue>, MutablePoint> currentRegisteredPoints =
+    ImmutableMap<ImmutableList<LabelValue>, MutableTimeSeries> currentRegisteredPoints =
         registeredPoints;
     if (currentRegisteredPoints.isEmpty()) {
       return null;
     }
 
     List<TimeSeries> timeSeriesList = new ArrayList<>(currentRegisteredPoints.size());
-    for (Map.Entry<ImmutableList<LabelValue>, MutablePoint> entry :
+    for (Map.Entry<ImmutableList<LabelValue>, MutableTimeSeries> entry :
         currentRegisteredPoints.entrySet()) {
       TimeSeries timeSeries = entry.getValue().getTimeSeries();
       if (timeSeries != null) {
@@ -150,7 +155,7 @@ public final class LastValueMetric {
 
   // When https://github.com/census-instrumentation/opencensus-java/issues/1789 is fixed
   // pre-create the default TimeSeries and use setPoint.
-  private static final class MutablePoint {
+  private abstract static class MutableTimeSeries {
     private final ImmutableList<LabelValue> labelValues;
     private final boolean isCumulative;
     private Timestamp lastResetTimestamp;
@@ -161,7 +166,7 @@ public final class LastValueMetric {
     private Timestamp timestamp;
     private double value;
 
-    MutablePoint(
+    MutableTimeSeries(
         ImmutableList<LabelValue> labelValues,
         Timestamp timestamp,
         double value,
@@ -195,15 +200,46 @@ public final class LastValueMetric {
         // recorded point.
         return TimeSeries.create(
             labelValues,
-            Collections.singletonList(
-                Point.create(Value.doubleValue(value - lastResetValue), timestamp)),
+            Collections.singletonList(Point.create(getValue(value - lastResetValue), timestamp)),
             lastResetTimestamp);
       } else {
         return TimeSeries.create(
-            labelValues,
-            Collections.singletonList(Point.create(Value.doubleValue(value), timestamp)),
-            null);
+            labelValues, Collections.singletonList(Point.create(getValue(value), timestamp)), null);
       }
+    }
+
+    abstract Value getValue(double value);
+  }
+
+  private static final class MutableDoubleTimeSeries extends MutableTimeSeries {
+    MutableDoubleTimeSeries(
+        ImmutableList<LabelValue> labelValues,
+        Timestamp timestamp,
+        double value,
+        boolean isCumulative) {
+      super(labelValues, timestamp, value, isCumulative);
+    }
+
+    @Override
+    Value getValue(double value) {
+      return Value.doubleValue(value);
+    }
+  }
+
+  private static final class MutableLongTimeSeries extends MutableTimeSeries {
+    MutableLongTimeSeries(
+        ImmutableList<LabelValue> labelValues,
+        Timestamp timestamp,
+        double value,
+        boolean isCumulative) {
+      super(labelValues, timestamp, value, isCumulative);
+    }
+
+    @Override
+    Value getValue(double value) {
+      // If we record only long values using round will give us the right long number because of
+      // the floating point errors 0.999 means 1.
+      return Value.longValue(Math.round(value));
     }
   }
 }

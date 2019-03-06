@@ -19,7 +19,9 @@ package io.opencensus.graphite;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.opencensus.metrics.export.MetricDescriptor.Type.CUMULATIVE_DOUBLE;
+import static io.opencensus.metrics.export.MetricDescriptor.Type.CUMULATIVE_INT64;
 import static io.opencensus.metrics.export.MetricDescriptor.Type.GAUGE_DOUBLE;
+import static io.opencensus.metrics.export.MetricDescriptor.Type.GAUGE_INT64;
 
 import com.google.common.collect.ImmutableList;
 import io.opencensus.metrics.LabelKey;
@@ -52,11 +54,12 @@ public final class LastValueProducer extends MetricProducer {
    * @param description the description of the metric.
    * @param unit the unit of the metric.
    * @param type the type of the metric (Gauge, Cumulative), supported values are {@link
-   *     Type#CUMULATIVE_DOUBLE} and {@link Type#GAUGE_DOUBLE}
+   *     Type#CUMULATIVE_DOUBLE}, {@link Type#GAUGE_DOUBLE}, {@link Type#CUMULATIVE_INT64} and
+   *     {@link Type#GAUGE_INT64}.
    * @param labelKeys the list of the label keys.
    * @return a {@link LastValueMetric} that can be used to record TimeSeries for this metric.
    * @throws IllegalArgumentException if type is not {@link Type#CUMULATIVE_DOUBLE} or {@link
-   *     Type#GAUGE_DOUBLE}.
+   *     Type#GAUGE_DOUBLE} or {@link Type#CUMULATIVE_INT64} or {@link Type#GAUGE_INT64}.
    */
   public synchronized LastValueMetric addMetric(
       String name, String description, String unit, Type type, List<LabelKey> labelKeys) {
@@ -66,7 +69,10 @@ public final class LastValueProducer extends MetricProducer {
     checkNotNull(type, "type");
     checkNotNull(labelKeys, "labelKeys");
     checkArgument(
-        type == CUMULATIVE_DOUBLE || type == GAUGE_DOUBLE,
+        type == CUMULATIVE_DOUBLE
+            || type == GAUGE_DOUBLE
+            || type == CUMULATIVE_INT64
+            || type == GAUGE_INT64,
         "Type must be " + "CUMULATIVE_DOUBLE or GAUGE_DOUBLE");
     LastValueMetric lastValueMetric = new LastValueMetric(name, description, unit, type, labelKeys);
     lastValueMetrics =

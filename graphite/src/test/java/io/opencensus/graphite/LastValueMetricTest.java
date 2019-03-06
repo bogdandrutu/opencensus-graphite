@@ -222,4 +222,28 @@ public class LastValueMetricTest {
                 ImmutableList.of(Point.create(Value.doubleValue(7), TEST_TIME2)),
                 null));
   }
+
+  @Test
+  public void getMetric_CumulativeLong() {
+    LastValueMetric cumulativeLongMetric =
+        new LastValueMetric(
+            METRIC_NAME, METRIC_DESCRIPTION, METRIC_UNIT, Type.CUMULATIVE_INT64, LABEL_KEYS);
+    assertThat(cumulativeLongMetric.getMetric()).isNull();
+    cumulativeLongMetric.record(LABEL_VALUES, TEST_TIME, 5);
+    // First recorded value, reset point, no value to export.
+    assertThat(cumulativeLongMetric.getMetric()).isNull();
+    cumulativeLongMetric.record(LABEL_VALUES, TEST_TIME1, 12);
+    assertThat(cumulativeLongMetric.getMetric()).isNotNull();
+    assertThat(cumulativeLongMetric.getMetric().getMetricDescriptor())
+        .isEqualTo(
+            MetricDescriptor.create(
+                METRIC_NAME, METRIC_DESCRIPTION, METRIC_UNIT, Type.CUMULATIVE_INT64, LABEL_KEYS));
+    // Second record, export the difference.
+    assertThat(cumulativeLongMetric.getMetric().getTimeSeriesList())
+        .containsExactly(
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.longValue(7), TEST_TIME1)),
+                TEST_TIME));
+  }
 }
