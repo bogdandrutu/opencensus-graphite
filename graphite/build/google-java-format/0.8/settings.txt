@@ -1,4 +1,0 @@
-#Generated; DO NOT CHANGE!!!
-#Tue Mar 05 20:22:56 PST 2019
-toolVersion=1.7
-options=

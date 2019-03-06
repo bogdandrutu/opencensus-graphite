@@ -16,8 +16,12 @@
 
 package io.opencensus.graphite;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static io.opencensus.metrics.export.MetricDescriptor.Type.CUMULATIVE_DOUBLE;
+import static io.opencensus.metrics.export.MetricDescriptor.Type.GAUGE_DOUBLE;
+
 import com.google.common.collect.ImmutableList;
-import io.opencensus.common.Timestamp;
 import io.opencensus.metrics.LabelKey;
 import io.opencensus.metrics.export.ExportComponent;
 import io.opencensus.metrics.export.Metric;
@@ -27,7 +31,6 @@ import io.opencensus.metrics.export.MetricProducerManager;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import javax.annotation.Nullable;
 
 /**
  * Metric producer that is designed for the cases when a stream of already aggregated metrics is
@@ -48,23 +51,30 @@ public final class LastValueProducer extends MetricProducer {
    * @param name the name of the metric.
    * @param description the description of the metric.
    * @param unit the unit of the metric.
-   * @param type the type of the metric (Gauge, Cumulative).
+   * @param type the type of the metric (Gauge, Cumulative), supported values are {@link
+   *     Type#CUMULATIVE_DOUBLE} and {@link Type#GAUGE_DOUBLE}
    * @param labelKeys the list of the label keys.
-   * @param startTimestamp only for Cumulative metrics, and represents since when the metric is
-   *     recorded.
-   * @return
+   * @return a {@link LastValueMetric} that can be used to record TimeSeries for this metric.
+   * @throws IllegalArgumentException if type is not {@link Type#CUMULATIVE_DOUBLE} or {@link
+   *     Type#GAUGE_DOUBLE}.
    */
   public synchronized LastValueMetric addMetric(
-      String name,
-      String description,
-      String unit,
-      Type type,
-      List<LabelKey> labelKeys,
-      @Nullable Timestamp startTimestamp) {
-    LastValueMetric lastValueMetric =
-        new LastValueMetric(name, description, unit, type, labelKeys, startTimestamp);
-    List<LastValueMetric> copy = new ArrayList<>(lastValueMetrics);
-    copy.add(lastValueMetric);
+      String name, String description, String unit, Type type, List<LabelKey> labelKeys) {
+    LastValueMetric lastValueMetric = new LastValueMetric(name, description, unit, type, labelKeys);
+    checkNotNull(name, "name");
+    checkNotNull(description, "description");
+    checkNotNull(unit, "unit");
+    checkNotNull(type, "type");
+    checkNotNull(labelKeys, "labelKeys");
+    checkArgument(
+        type == CUMULATIVE_DOUBLE || type == GAUGE_DOUBLE,
+        "Type must be " + "CUMULATIVE_DOUBLE or GAUGE_DOUBLE");
+    lastValueMetrics =
+        ImmutableList.<LastValueMetric>builder()
+            .addAll(lastValueMetrics)
+            .add(lastValueMetric)
+            .build();
+
     return lastValueMetric;
   }
 
@@ -73,7 +83,10 @@ public final class LastValueProducer extends MetricProducer {
     ImmutableList<LastValueMetric> currentLastValueMetrics = lastValueMetrics;
     ArrayList<Metric> ret = new ArrayList<>(currentLastValueMetrics.size());
     for (LastValueMetric lastValueMetric : currentLastValueMetrics) {
-      ret.add(lastValueMetric.getMetric());
+      Metric metric = lastValueMetric.getMetric();
+      if (metric != null) {
+        ret.add(lastValueMetric.getMetric());
+      }
     }
     return ret;
   }
