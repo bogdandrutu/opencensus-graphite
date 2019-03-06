@@ -31,7 +31,6 @@ subprojects {
     apply plugin: "jacoco"
     // The plugin only has an effect if a signature is specified
     apply plugin: 'ru.vyarus.animalsniffer'
-    apply plugin: 'findbugs'
     apply plugin: 'net.ltgt.apt'
     apply plugin: 'net.ltgt.apt-idea'
     apply plugin: "me.champeau.gradle.jmh"
@@ -103,7 +102,6 @@ subprojects {
 
     ext {
         autoValueVersion = '1.5.4'
-        findBugsAnnotationsVersion = '3.0.1'
         findBugsJsr305Version = '3.0.2'
         jacksonVersion = '2.9.8'
         errorProneVersion = '2.3.2'
@@ -115,7 +113,6 @@ subprojects {
                 auto_service: 'com.google.auto.service:auto-service:1.0-rc3',
                 config: 'com.typesafe:config:1.2.1',
                 errorprone: "com.google.errorprone:error_prone_annotations:${errorProneVersion}",
-                findbugs_annotations: "com.google.code.findbugs:annotations:${findBugsAnnotationsVersion}",
                 guava: "com.google.guava:guava:${guavaVersion}",
                 jackson_annotations: "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}",
                 jsr305: "com.google.code.findbugs:jsr305:${findBugsJsr305Version}",
@@ -150,34 +147,6 @@ subprojects {
         // The ErrorProne plugin defaults to the latest, which would break our
         // build if error prone releases a new version with a new check
         errorprone "com.google.errorprone:error_prone_core:${errorProneVersion}"
-    }
-
-    findbugs {
-        toolVersion = findBugsAnnotationsVersion
-        ignoreFailures = false   // bug free or it doesn't ship!
-        effort = 'max'
-        reportLevel = 'low'      // low = sensitive to even minor mistakes
-        omitVisitors = []        // bugs that we want to ignore
-        excludeFilter = file("$rootDir/findbugs-exclude.xml")
-    }
-    // Generate html report for findbugs.
-    findbugsMain {
-        reports {
-            xml.enabled = false
-            html.enabled = true
-        }
-    }
-    findbugsTest {
-        reports {
-            xml.enabled = false
-            html.enabled = true
-        }
-    }
-    findbugsJmh {
-        reports {
-            xml.enabled = false
-            html.enabled = true
-        }
     }
 
     checkstyle {

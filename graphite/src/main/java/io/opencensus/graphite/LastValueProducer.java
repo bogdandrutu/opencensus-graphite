@@ -60,7 +60,6 @@ public final class LastValueProducer extends MetricProducer {
    */
   public synchronized LastValueMetric addMetric(
       String name, String description, String unit, Type type, List<LabelKey> labelKeys) {
-    LastValueMetric lastValueMetric = new LastValueMetric(name, description, unit, type, labelKeys);
     checkNotNull(name, "name");
     checkNotNull(description, "description");
     checkNotNull(unit, "unit");
@@ -69,6 +68,7 @@ public final class LastValueProducer extends MetricProducer {
     checkArgument(
         type == CUMULATIVE_DOUBLE || type == GAUGE_DOUBLE,
         "Type must be " + "CUMULATIVE_DOUBLE or GAUGE_DOUBLE");
+    LastValueMetric lastValueMetric = new LastValueMetric(name, description, unit, type, labelKeys);
     lastValueMetrics =
         ImmutableList.<LastValueMetric>builder()
             .addAll(lastValueMetrics)

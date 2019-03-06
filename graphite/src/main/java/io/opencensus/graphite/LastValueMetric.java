@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019, OpenCensus Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.opencensus.graphite;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -50,6 +66,7 @@ public final class LastValueMetric {
    * @throws IllegalArgumentException if labelValues.size() != labelKeys.size().
    */
   public void record(ImmutableList<LabelValue> labelValues, Timestamp timestamp, double value) {
+    checkNotNull(labelValues, "labelValues");
     checkNotNull(timestamp, "timestamp");
     // Safe to access the map without a lock because the map is immutable and volatile (so the
     // last written value is visible).
@@ -60,22 +77,24 @@ public final class LastValueMetric {
       return;
     }
 
+    // Slow path we need to add a new Point.
     checkArgument(
         labelKeysSize == labelValues.size(), "Label Keys and Label Values don't have same size.");
+    addMutablePoint(
+        labelValues,
+        new MutablePoint(
+            labelValues, timestamp, value, metricDescriptor.getType() == Type.CUMULATIVE_DOUBLE));
+  }
 
-    synchronized (this) {
-      registeredPoints =
-          ImmutableMap.<ImmutableList<LabelValue>, MutablePoint>builder()
-              .putAll(registeredPoints)
-              .put(
-                  labelValues,
-                  new MutablePoint(
-                      labelValues,
-                      timestamp,
-                      value,
-                      metricDescriptor.getType() == Type.CUMULATIVE_DOUBLE))
-              .build();
-    }
+  // Synchronized here to make sure that two threads do not add a Point in the same time.
+  private synchronized void addMutablePoint(
+      ImmutableList<LabelValue> labelValues, MutablePoint mutablePoint) {
+    // Synchronized here to make sure that two threads do not add a Point in the same time.
+    registeredPoints =
+        ImmutableMap.<ImmutableList<LabelValue>, MutablePoint>builder()
+            .putAll(registeredPoints)
+            .put(labelValues, mutablePoint)
+            .build();
   }
 
   @Nullable
@@ -135,8 +154,7 @@ public final class LastValueMetric {
         return defaultTimeSeries.setPoint(
             Point.create(Value.doubleValue(value - firstRecordedValue), timestamp));
       } else {
-        return defaultTimeSeries.setPoint(
-            Point.create(Value.doubleValue(value - firstRecordedValue), timestamp));
+        return defaultTimeSeries.setPoint(Point.create(Value.doubleValue(value), timestamp));
       }
     }
   }
