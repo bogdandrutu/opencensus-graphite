@@ -52,6 +52,7 @@ public class LastValueMetricTest {
   private static final Timestamp TEST_TIME = Timestamp.create(1234, 123);
   private static final Timestamp TEST_TIME1 = TEST_TIME.addDuration(Duration.create(1, 1));
   private static final Timestamp TEST_TIME2 = TEST_TIME1.addDuration(Duration.create(1, 1));
+  private static final Timestamp TEST_TIME3 = TEST_TIME2.addDuration(Duration.create(1, 1));
   private static final MetricDescriptor GAUGE_METRIC_DESCRIPTOR =
       MetricDescriptor.create(
           METRIC_NAME, METRIC_DESCRIPTION, METRIC_UNIT, Type.GAUGE_DOUBLE, LABEL_KEY);
@@ -154,5 +155,45 @@ public class LastValueMetricTest {
                 LABEL_VALUES1,
                 ImmutableList.of(Point.create(Value.doubleValue(3), TEST_TIME2)),
                 TEST_TIME1));
+  }
+
+  @Test
+  public void getMetric_Cumulative_Reset() {
+    assertThat(cumulativeMetric.getMetric()).isNull();
+    cumulativeMetric.record(LABEL_VALUES, TEST_TIME, 5);
+    assertThat(cumulativeMetric.getMetric()).isNotNull();
+    assertThat(cumulativeMetric.getMetric().getMetricDescriptor())
+        .isEqualTo(CUMULATIVE_METRIC_DESCRIPTOR);
+    // First recorded value
+    assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
+        .containsExactly(
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(0), TEST_TIME)),
+                TEST_TIME));
+    cumulativeMetric.record(LABEL_VALUES, TEST_TIME1, 12);
+    // Second record, export the difference.
+    assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
+        .containsExactly(
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(7), TEST_TIME1)),
+                TEST_TIME));
+    cumulativeMetric.record(LABEL_VALUES, TEST_TIME2, 3);
+    // This should be a reset.
+    assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
+        .containsExactly(
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(0), TEST_TIME2)),
+                TEST_TIME2));
+    cumulativeMetric.record(LABEL_VALUES, TEST_TIME3, 7);
+    // This new value is computed from the reset value.
+    assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
+        .containsExactly(
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(4), TEST_TIME3)),
+                TEST_TIME2));
   }
 }

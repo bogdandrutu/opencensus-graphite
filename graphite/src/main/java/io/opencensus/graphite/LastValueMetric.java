@@ -123,9 +123,9 @@ public final class LastValueMetric {
   // When is fixed pre-create the default TimeSeries and use setPoint.
   private static final class MutablePoint {
     private final ImmutableList<LabelValue> labelValues;
-    private final Timestamp firstRecordedTimestamp;
-    private final double firstRecordedValue;
     private final boolean isCumulative;
+    private Timestamp lastResetTimestamp;
+    private double lastResetValue;
     // TODO: As an optimization to avoid locking can put this into an immutable class and use
     // volatile reference to that class here because load/store operations are atomic for
     // references.
@@ -139,13 +139,18 @@ public final class LastValueMetric {
         boolean isCumulative) {
       this.isCumulative = isCumulative;
       this.labelValues = labelValues;
-      this.firstRecordedTimestamp = timestamp;
-      this.firstRecordedValue = value;
+      this.lastResetTimestamp = timestamp;
+      this.lastResetValue = value;
       this.timestamp = timestamp;
       this.value = value;
     }
 
     synchronized void set(Timestamp timestamp, double value) {
+      if (value < this.value) {
+        // The value reset, we need to reset as well.
+        this.lastResetTimestamp = timestamp;
+        this.lastResetValue = value;
+      }
       this.value = value;
       this.timestamp = timestamp;
     }
@@ -157,8 +162,8 @@ public final class LastValueMetric {
         return TimeSeries.create(
             labelValues,
             Collections.singletonList(
-                Point.create(Value.doubleValue(value - firstRecordedValue), timestamp)),
-            firstRecordedTimestamp);
+                Point.create(Value.doubleValue(value - lastResetValue), timestamp)),
+            lastResetTimestamp);
       } else {
         return TimeSeries.create(
             labelValues,
