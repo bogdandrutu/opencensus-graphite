@@ -87,27 +87,24 @@ public class LastValueMetricTest {
     assertThat(gaugeMetric.getMetric().getMetricDescriptor()).isEqualTo(GAUGE_METRIC_DESCRIPTOR);
     assertThat(gaugeMetric.getMetric().getTimeSeriesList())
         .containsExactly(
-            ImmutableList.of(
-                TimeSeries.create(
-                    LABEL_VALUES,
-                    ImmutableList.of(Point.create(Value.doubleValue(5), TEST_TIME)),
-                    null)));
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(5), TEST_TIME)),
+                null));
     gaugeMetric.record(LABEL_VALUES, TEST_TIME1, 3);
     assertThat(gaugeMetric.getMetric().getTimeSeriesList())
         .containsExactly(
-            ImmutableList.of(
-                TimeSeries.create(
-                    LABEL_VALUES,
-                    ImmutableList.of(Point.create(Value.doubleValue(3), TEST_TIME1)),
-                    null)));
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(3), TEST_TIME1)),
+                null));
     gaugeMetric.record(LABEL_VALUES, TEST_TIME2, 7);
     assertThat(gaugeMetric.getMetric().getTimeSeriesList())
         .containsExactly(
-            ImmutableList.of(
-                TimeSeries.create(
-                    LABEL_VALUES,
-                    ImmutableList.of(Point.create(Value.doubleValue(7), TEST_TIME1)),
-                    null)));
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(7), TEST_TIME2)),
+                null));
   }
 
   @Test
@@ -120,46 +117,42 @@ public class LastValueMetricTest {
     // First recorded value
     assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
         .containsExactly(
-            ImmutableList.of(
-                TimeSeries.create(
-                    LABEL_VALUES,
-                    ImmutableList.of(Point.create(Value.doubleValue(0), TEST_TIME)),
-                    TEST_TIME)));
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(0), TEST_TIME)),
+                TEST_TIME));
     cumulativeMetric.record(LABEL_VALUES, TEST_TIME1, 12);
     // Second record, export the difference.
     assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
         .containsExactly(
-            ImmutableList.of(
-                TimeSeries.create(
-                    LABEL_VALUES,
-                    ImmutableList.of(Point.create(Value.doubleValue(7), TEST_TIME1)),
-                    TEST_TIME)));
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(7), TEST_TIME1)),
+                TEST_TIME));
     // Newly added TimeSeries also starts from 0.
     cumulativeMetric.record(LABEL_VALUES1, TEST_TIME1, 13);
     assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
         .containsExactly(
-            ImmutableList.of(
-                TimeSeries.create(
-                    LABEL_VALUES,
-                    ImmutableList.of(Point.create(Value.doubleValue(7), TEST_TIME1)),
-                    TEST_TIME),
-                TimeSeries.create(
-                    LABEL_VALUES1,
-                    ImmutableList.of(Point.create(Value.doubleValue(0), TEST_TIME1)),
-                    TEST_TIME1)));
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(7), TEST_TIME1)),
+                TEST_TIME),
+            TimeSeries.create(
+                LABEL_VALUES1,
+                ImmutableList.of(Point.create(Value.doubleValue(0), TEST_TIME1)),
+                TEST_TIME1));
     // Newly added TimeSeries also starts from 0.
-    cumulativeMetric.record(LABEL_VALUES1, TEST_TIME2, 18);
+    cumulativeMetric.record(LABEL_VALUES, TEST_TIME2, 17);
     cumulativeMetric.record(LABEL_VALUES1, TEST_TIME2, 16);
     assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
         .containsExactly(
-            ImmutableList.of(
-                TimeSeries.create(
-                    LABEL_VALUES,
-                    ImmutableList.of(Point.create(Value.doubleValue(6), TEST_TIME2)),
-                    TEST_TIME),
-                TimeSeries.create(
-                    LABEL_VALUES1,
-                    ImmutableList.of(Point.create(Value.doubleValue(3), TEST_TIME2)),
-                    TEST_TIME1)));
+            TimeSeries.create(
+                LABEL_VALUES,
+                ImmutableList.of(Point.create(Value.doubleValue(12), TEST_TIME2)),
+                TEST_TIME),
+            TimeSeries.create(
+                LABEL_VALUES1,
+                ImmutableList.of(Point.create(Value.doubleValue(3), TEST_TIME2)),
+                TEST_TIME1));
   }
 }

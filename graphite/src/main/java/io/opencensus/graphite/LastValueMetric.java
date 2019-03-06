@@ -120,8 +120,10 @@ public final class LastValueMetric {
     return Metric.create(metricDescriptor, timeSeriesList);
   }
 
+  // When is fixed pre-create the default TimeSeries and use setPoint.
   private static final class MutablePoint {
-    private final TimeSeries defaultTimeSeries;
+    private final ImmutableList<LabelValue> labelValues;
+    private final Timestamp firstRecordedTimestamp;
     private final double firstRecordedValue;
     private final boolean isCumulative;
     // TODO: As an optimization to avoid locking can put this into an immutable class and use
@@ -131,13 +133,14 @@ public final class LastValueMetric {
     private double value;
 
     MutablePoint(
-        List<LabelValue> labelValues, Timestamp timestamp, double value, boolean isCumulative) {
+        ImmutableList<LabelValue> labelValues,
+        Timestamp timestamp,
+        double value,
+        boolean isCumulative) {
       this.isCumulative = isCumulative;
-      defaultTimeSeries =
-          isCumulative
-              ? TimeSeries.create(labelValues, Collections.emptyList(), timestamp)
-              : TimeSeries.create(labelValues);
-      firstRecordedValue = value;
+      this.labelValues = labelValues;
+      this.firstRecordedTimestamp = timestamp;
+      this.firstRecordedValue = value;
       this.timestamp = timestamp;
       this.value = value;
     }
@@ -151,10 +154,16 @@ public final class LastValueMetric {
       if (isCumulative) {
         // We subtract the first recorded value and we always export relative to the first
         // recorded point.
-        return defaultTimeSeries.setPoint(
-            Point.create(Value.doubleValue(value - firstRecordedValue), timestamp));
+        return TimeSeries.create(
+            labelValues,
+            Collections.singletonList(
+                Point.create(Value.doubleValue(value - firstRecordedValue), timestamp)),
+            firstRecordedTimestamp);
       } else {
-        return defaultTimeSeries.setPoint(Point.create(Value.doubleValue(value), timestamp));
+        return TimeSeries.create(
+            labelValues,
+            Collections.singletonList(Point.create(Value.doubleValue(value), timestamp)),
+            null);
       }
     }
   }
