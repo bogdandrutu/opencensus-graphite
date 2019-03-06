@@ -107,20 +107,23 @@ public final class LastValueMetric {
       return null;
     }
 
-    if (currentRegisteredPoints.size() == 1) {
-      MutablePoint point = currentRegisteredPoints.values().iterator().next();
-      return Metric.createWithOneTimeSeries(metricDescriptor, point.getTimeSeries());
-    }
-
     List<TimeSeries> timeSeriesList = new ArrayList<>(currentRegisteredPoints.size());
     for (Map.Entry<ImmutableList<LabelValue>, MutablePoint> entry :
         currentRegisteredPoints.entrySet()) {
-      timeSeriesList.add(entry.getValue().getTimeSeries());
+      TimeSeries timeSeries = entry.getValue().getTimeSeries();
+      if (timeSeries != null) {
+        timeSeriesList.add(timeSeries);
+      }
+    }
+    if (timeSeriesList.isEmpty()) {
+      // All TimeSeries were empty so nothing to report.
+      return null;
     }
     return Metric.create(metricDescriptor, timeSeriesList);
   }
 
-  // When is fixed pre-create the default TimeSeries and use setPoint.
+  // When https://github.com/census-instrumentation/opencensus-java/issues/1789 is fixed
+  // pre-create the default TimeSeries and use setPoint.
   private static final class MutablePoint {
     private final ImmutableList<LabelValue> labelValues;
     private final boolean isCumulative;
@@ -155,8 +158,13 @@ public final class LastValueMetric {
       this.timestamp = timestamp;
     }
 
+    @Nullable
     synchronized TimeSeries getTimeSeries() {
       if (isCumulative) {
+        // If the last recorded point is the reset point, don't report anything because
+        if (lastResetTimestamp.equals(timestamp)) {
+          return null;
+        }
         // We subtract the first recorded value and we always export relative to the first
         // recorded point.
         return TimeSeries.create(

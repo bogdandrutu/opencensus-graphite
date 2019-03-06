@@ -112,17 +112,12 @@ public class LastValueMetricTest {
   public void getMetric_Cumulative() {
     assertThat(cumulativeMetric.getMetric()).isNull();
     cumulativeMetric.record(LABEL_VALUES, TEST_TIME, 5);
+    // First recorded value, reset point, no value to export.
+    assertThat(cumulativeMetric.getMetric()).isNull();
+    cumulativeMetric.record(LABEL_VALUES, TEST_TIME1, 12);
     assertThat(cumulativeMetric.getMetric()).isNotNull();
     assertThat(cumulativeMetric.getMetric().getMetricDescriptor())
         .isEqualTo(CUMULATIVE_METRIC_DESCRIPTOR);
-    // First recorded value
-    assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
-        .containsExactly(
-            TimeSeries.create(
-                LABEL_VALUES,
-                ImmutableList.of(Point.create(Value.doubleValue(0), TEST_TIME)),
-                TEST_TIME));
-    cumulativeMetric.record(LABEL_VALUES, TEST_TIME1, 12);
     // Second record, export the difference.
     assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
         .containsExactly(
@@ -130,18 +125,14 @@ public class LastValueMetricTest {
                 LABEL_VALUES,
                 ImmutableList.of(Point.create(Value.doubleValue(7), TEST_TIME1)),
                 TEST_TIME));
-    // Newly added TimeSeries also starts from 0.
+    // Newly added TimeSeries, will not be reported until second point.
     cumulativeMetric.record(LABEL_VALUES1, TEST_TIME1, 13);
     assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
         .containsExactly(
             TimeSeries.create(
                 LABEL_VALUES,
                 ImmutableList.of(Point.create(Value.doubleValue(7), TEST_TIME1)),
-                TEST_TIME),
-            TimeSeries.create(
-                LABEL_VALUES1,
-                ImmutableList.of(Point.create(Value.doubleValue(0), TEST_TIME1)),
-                TEST_TIME1));
+                TEST_TIME));
     // Newly added TimeSeries also starts from 0.
     cumulativeMetric.record(LABEL_VALUES, TEST_TIME2, 17);
     cumulativeMetric.record(LABEL_VALUES1, TEST_TIME2, 16);
@@ -161,17 +152,10 @@ public class LastValueMetricTest {
   public void getMetric_Cumulative_Reset() {
     assertThat(cumulativeMetric.getMetric()).isNull();
     cumulativeMetric.record(LABEL_VALUES, TEST_TIME, 5);
-    assertThat(cumulativeMetric.getMetric()).isNotNull();
-    assertThat(cumulativeMetric.getMetric().getMetricDescriptor())
-        .isEqualTo(CUMULATIVE_METRIC_DESCRIPTOR);
-    // First recorded value
-    assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
-        .containsExactly(
-            TimeSeries.create(
-                LABEL_VALUES,
-                ImmutableList.of(Point.create(Value.doubleValue(0), TEST_TIME)),
-                TEST_TIME));
+    // First recorded value, reset point, no value to export.
+    assertThat(cumulativeMetric.getMetric()).isNull();
     cumulativeMetric.record(LABEL_VALUES, TEST_TIME1, 12);
+    assertThat(cumulativeMetric.getMetric()).isNotNull();
     // Second record, export the difference.
     assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
         .containsExactly(
@@ -180,13 +164,8 @@ public class LastValueMetricTest {
                 ImmutableList.of(Point.create(Value.doubleValue(7), TEST_TIME1)),
                 TEST_TIME));
     cumulativeMetric.record(LABEL_VALUES, TEST_TIME2, 3);
-    // This should be a reset.
-    assertThat(cumulativeMetric.getMetric().getTimeSeriesList())
-        .containsExactly(
-            TimeSeries.create(
-                LABEL_VALUES,
-                ImmutableList.of(Point.create(Value.doubleValue(0), TEST_TIME2)),
-                TEST_TIME2));
+    // This should be a reset, no value to export.
+    assertThat(cumulativeMetric.getMetric()).isNull();
     cumulativeMetric.record(LABEL_VALUES, TEST_TIME3, 7);
     // This new value is computed from the reset value.
     assertThat(cumulativeMetric.getMetric().getTimeSeriesList())

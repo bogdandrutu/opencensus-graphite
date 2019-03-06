@@ -19,6 +19,7 @@ package io.opencensus.graphite;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.collect.ImmutableList;
+import io.opencensus.common.Duration;
 import io.opencensus.common.Timestamp;
 import io.opencensus.metrics.LabelKey;
 import io.opencensus.metrics.LabelValue;
@@ -44,6 +45,7 @@ public class LastValueProducerTest {
       ImmutableList.of(LabelValue.create("value"));
 
   private static final Timestamp TEST_TIME = Timestamp.create(1234, 123);
+  private static final Timestamp TEST_TIME1 = TEST_TIME.addDuration(Duration.create(1, 1));
   private static final MetricDescriptor GAUGE_METRIC_DESCRIPTOR =
       MetricDescriptor.create(
           METRIC_NAME, METRIC_DESCRIPTION, METRIC_UNIT, Type.GAUGE_DOUBLE, LABEL_KEY);
@@ -113,6 +115,11 @@ public class LastValueProducerTest {
     assertThat(metric.getMetric()).isNull();
     assertThat(lastValueProducer.getMetrics()).isEmpty();
     metric.record(LABEL_VALUES, TEST_TIME, 5);
+    // First record is the reset point so no metrics yet
+    assertThat(metric).isNotNull();
+    assertThat(metric.getMetric()).isNull();
+    assertThat(lastValueProducer.getMetrics()).isEmpty();
+    metric.record(LABEL_VALUES, TEST_TIME1, 5);
     assertThat(metric.getMetric()).isNotNull();
     assertThat(metric.getMetric().getMetricDescriptor()).isEqualTo(CUMULATIVE_METRIC_DESCRIPTOR);
     assertThat(lastValueProducer.getMetrics()).containsExactly(metric.getMetric());
