@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.opencensus.graphite;
+package io.opencensus.lastvalue;
 
 import static com.google.common.truth.Truth.assertThat;
 

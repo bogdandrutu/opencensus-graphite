@@ -1,0 +1,6 @@
+description = 'OpenCensus Graphite'
+
+dependencies {
+    compile libraries.guava,
+            libraries.opencensus_api
+}

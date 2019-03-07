@@ -1,0 +1,24 @@
+description = 'OpenCensus Example'
+
+dependencies {
+    compile project(':opencensus-lastvalue'),
+            libraries.opencensus_api,
+            libraries.opencensus_impl,
+            libraries.opencensus_sd_stats
+}
+
+// Provide convenience executables for trying out the examples.
+apply plugin: 'application'
+
+startScripts.enabled = false
+
+task sendMetricsToStackdriver(type: CreateStartScripts) {
+    mainClassName = 'io.opencensus.example.SendMetricsToStackdriver'
+    applicationName = 'SendMetricsToStackdriver'
+    outputDir = new File(project.buildDir, 'tmp')
+    classpath = jar.outputs.files + project.configurations.runtime
+}
+
+applicationDistribution.into('bin') {
+    from(sendMetricsToStackdriver)
+}

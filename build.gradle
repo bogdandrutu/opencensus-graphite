@@ -101,23 +101,18 @@ subprojects {
     }
 
     ext {
-        autoValueVersion = '1.5.4'
         findBugsJsr305Version = '3.0.2'
-        jacksonVersion = '2.9.8'
         errorProneVersion = '2.3.2'
         opencensusVersion = '0.19.2'
         guavaVersion = '26.0-android'
 
         libraries = [
-                auto_value: "com.google.auto.value:auto-value:${autoValueVersion}",
-                auto_service: 'com.google.auto.service:auto-service:1.0-rc3',
-                config: 'com.typesafe:config:1.2.1',
                 errorprone: "com.google.errorprone:error_prone_annotations:${errorProneVersion}",
                 guava: "com.google.guava:guava:${guavaVersion}",
-                jackson_annotations: "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}",
                 jsr305: "com.google.code.findbugs:jsr305:${findBugsJsr305Version}",
                 opencensus_api: "io.opencensus:opencensus-api:${opencensusVersion}",
                 opencensus_impl: "io.opencensus:opencensus-impl:${opencensusVersion}",
+                opencensus_sd_stats: "io.opencensus:opencensus-exporter-stats-stackdriver:${opencensusVersion}",
 
                 // Test dependencies.
                 guava_testlib: "com.google.guava:guava-testlib:${guavaVersion}",

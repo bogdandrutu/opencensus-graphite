@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package io.opencensus.graphite;
+package io.opencensus.lastvalue;
 
 import static com.google.common.truth.Truth.assertThat;
-import static io.opencensus.graphite.LastValueMetric.UNSET_VALUE;
+import static io.opencensus.lastvalue.LastValueMetric.UNSET_VALUE;
 
 import com.google.common.collect.ImmutableList;
 import io.opencensus.common.Duration;
